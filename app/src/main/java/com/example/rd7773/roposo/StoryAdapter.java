@@ -179,7 +179,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
             public void onClick(View v) {
 
                 userProfile.setFollowing(userProfile.isFollowing?false:true);
-                if(userProfile.isFollowing){
+                /*if(userProfile.isFollowing){
 
                     holder.tvFollow.setText("Following");
                     holder.rlFollow.setActivated(true);
@@ -187,7 +187,9 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
 
                     holder.tvFollow.setText("Follow");
                     holder.rlFollow.setActivated(false);
-                }
+                }*/
+
+                notifyDataSetChanged();
             }
         });
 

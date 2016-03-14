@@ -44,6 +44,7 @@ public class StoryActivity extends AppCompatActivity {
 
         parseJsonData();
         adapter = new StoryAdapter(usersList,storyList,this);
+        adapter.setHasStableIds(true);
         listView.setAdapter(adapter);
         listView.setLayoutManager(lm);
 
