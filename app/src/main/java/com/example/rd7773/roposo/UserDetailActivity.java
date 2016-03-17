@@ -20,7 +20,7 @@ public class UserDetailActivity extends AppCompatActivity implements LoaderManag
 
     DetailCursorAdapter cursorAdapter;
     RecyclerView listview;
-    String userId;
+    String userId, userName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +38,7 @@ public class UserDetailActivity extends AppCompatActivity implements LoaderManag
 
         if(StaticInstance.isCursorAdapter){
 
+            userName = getIntent().getStringExtra("NAME");
             cursorAdapter = new DetailCursorAdapter(this,null);
             listview.setAdapter(cursorAdapter);
             getSupportLoaderManager().initLoader(0,null,this);
@@ -49,10 +50,11 @@ public class UserDetailActivity extends AppCompatActivity implements LoaderManag
             ArrayList<Story> storyList = new Gson().fromJson(str1, new TypeToken<ArrayList<Story>>(){}.getType());
             DetailAdapter adapter = new DetailAdapter(userProfile,storyList,this);
             listview.setAdapter(adapter);
-            setTitle(userProfile.getUserName());
+            userName = userProfile.getUserName();
+
         }
 
-
+        setTitle(userName);
         listview.setLayoutManager(lm);
 
     }

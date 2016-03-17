@@ -181,7 +181,7 @@ public class StoryCursorAdapter extends CursorAdapter {
 
                 Intent i = new Intent(ctx,UserDetailActivity.class);
                 i.putExtra("USER_ID", userProfile.getUserId());
-               // i.putExtra("LIST", new Gson().toJson(stories));
+                i.putExtra("NAME", userProfile.getUserName());
                 ctx.startActivity(i);
 
 
