@@ -1,6 +1,10 @@
 package com.example.rd7773.roposo;
 
-import java.util.ArrayList;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+
+import java.util.List;
 
 /**
  * Created by rd7773 on 3/11/2016.
@@ -178,4 +182,63 @@ public class UserProfile {
     public void setHandle(String handle) {
         this.handle = handle;
     }
+
+    public static UserProfile fromCursor(Cursor cursor){
+
+
+        String userId = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_ID));
+        String userName = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_NAME));
+        String imageUrl = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_IMG_URL));
+        String profileUrl = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_PROFILE_IMG_URL));
+        int followers = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_USER_FOLLOWERS));
+        int following = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_USER_FOLLOWING));
+        long userSince = cursor.getLong(cursor.getColumnIndex(DataProvider.COL_USER_USER_SINCE));
+        boolean isFollowing = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_USER_IS_FOLLOWING))==1?true:false;
+        String about = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_ABOUT));
+        String handle = cursor.getString(cursor.getColumnIndex(DataProvider.COL_USER_HANDLE));
+
+        UserProfile userProfile = new UserProfile.Builder(userId,userName,imageUrl)
+                .about(about)
+                .profileUrl(profileUrl)
+                .handle(handle)
+                .followers(followers)
+                .followings(following)
+                .userCreatedOn(userSince)
+                .setFollowing(isFollowing)
+                .build();
+
+        return userProfile;
+
+    }
+
+    public static void insertUsersList(List<UserProfile> list, Context ctx){
+        Cursor c = null;
+        for(UserProfile user : list){
+
+            ContentValues values = new ContentValues(10);
+            values.put(DataProvider.COL_USER_ID,user.getUserId());
+            values.put(DataProvider.COL_USER_NAME,user.getUserName());
+            values.put(DataProvider.COL_USER_IMG_URL,user.getImageUrl());
+            values.put(DataProvider.COL_USER_PROFILE_IMG_URL,user.getProfileUrl());
+            values.put(DataProvider.COL_USER_FOLLOWERS,user.getFollowers());
+            values.put(DataProvider.COL_USER_FOLLOWING,user.getFollowing());
+            values.put(DataProvider.COL_USER_USER_SINCE,user.getUserSince());
+            values.put(DataProvider.COL_USER_IS_FOLLOWING,user.isFollowing()?1:0);
+            values.put(DataProvider.COL_USER_ABOUT,user.getAbout());
+            values.put(DataProvider.COL_USER_HANDLE,user.getHandle());
+
+
+            c = ctx.getContentResolver().query(DataProvider.CONTENT_URI_USERS, null, DataProvider.COL_USER_ID+"='"+user.getUserId()+"'", null, null);
+            if(c != null && c.getCount() > 0){
+                //ctx.getContentResolver().update(DataProvider.CONTENT_URI_USERS, values, DataProvider.COL_USER_ID+"='"+user.getUserId()+"'", null);
+            }else
+                ctx.getContentResolver().insert(DataProvider.CONTENT_URI_USERS, values);
+
+            c.close();
+
+        }
+
+    }
+
+
 }

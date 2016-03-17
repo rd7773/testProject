@@ -1,13 +1,16 @@
 package com.example.rd7773.roposo;
 
 import android.content.Intent;
+import android.database.Cursor;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ListView;
@@ -19,35 +22,53 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
-public class StoryActivity extends AppCompatActivity {
+public class StoryActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private static final String TAG = "StoryActivity";
-    private HashMap<String , UserProfile> usersList;
-    private List<Story> storyList;
-    RecyclerView listView;
+    private List<UserProfile> usersList;
     StoryAdapter adapter;
+    StoryCursorAdapter cursorAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_story);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        LinearLayoutManager lm = new LinearLayoutManager(this);
-        listView = (RecyclerView) findViewById(R.id.list1);
-        setTitle("");
-        storyList = new ArrayList<>();
-        usersList = new HashMap<>();
+
+
+        usersList = new ArrayList<>();
 
         parseJsonData();
-        adapter = new StoryAdapter(usersList,storyList,this);
-        adapter.setHasStableIds(true);
-        listView.setAdapter(adapter);
-        listView.setLayoutManager(lm);
 
+        if(StaticInstance.isCursorAdapter)
+        {
+            setContentView(R.layout.activity_story_new);
+
+            ListView listView = (ListView) findViewById(R.id.list1);
+            cursorAdapter = new StoryCursorAdapter(this,null,0);
+            listView.setAdapter(cursorAdapter);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                listView.setNestedScrollingEnabled(true);
+            }
+
+            getSupportLoaderManager().initLoader(0,null,this);
+
+        }else{
+
+            setContentView(R.layout.activity_story);
+
+            LinearLayoutManager lm = new LinearLayoutManager(this);
+            RecyclerView listView = (RecyclerView) findViewById(R.id.list1);
+            adapter = new StoryAdapter(StaticInstance.usersMap,StaticInstance.storyList,this);
+            adapter.setHasStableIds(true);
+            listView.setAdapter(adapter);
+            listView.setLayoutManager(lm);
+        }
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        setTitle("");
     }
 
     @Override
@@ -120,7 +141,9 @@ public class StoryActivity extends AppCompatActivity {
                                                     .setFollowing(is_following)
                                                     .build();
 
-                    usersList.put(id,userProfile);
+                    StaticInstance.usersMap.put(id,userProfile);
+                    usersList.add(userProfile);
+
 
                 }catch (Exception e){
                     e.printStackTrace();
@@ -131,6 +154,7 @@ public class StoryActivity extends AppCompatActivity {
 
 
             }
+
 
 
             for(int j = i;j<jsonArray.length();j++){
@@ -160,7 +184,7 @@ public class StoryActivity extends AppCompatActivity {
                             .createdOn(createdOn)
                             .build();
 
-                    storyList.add(story);
+                    StaticInstance.storyList.add(story);
 
                 }catch (Exception e){
                     e.printStackTrace();
@@ -169,6 +193,8 @@ public class StoryActivity extends AppCompatActivity {
 
             }
 
+            Story.insertStories(StaticInstance.storyList,this);
+            UserProfile.insertUsersList(usersList,this);
 
         } catch (JSONException e) {
             e.printStackTrace();
@@ -181,4 +207,26 @@ public class StoryActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         adapter.onActivityResult(requestCode,resultCode,data);
     }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        CursorLoader loader = new CursorLoader(this,
+                DataProvider.CONTENT_URI_JOINED,
+                null,
+                "",
+                null,null);
+        return loader;
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        cursorAdapter.swapCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        cursorAdapter.swapCursor(null);
+    }
+
+
 }

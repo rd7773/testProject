@@ -1,10 +1,17 @@
 package com.example.rd7773.roposo;
 
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+
+import java.util.List;
+
 /**
  * Created by rd7773 on 3/11/2016.
  */
 public class Story {
 
+    private static final String TAG = "Story";
     String storyId;
     String title;
     String imageUrl, storyUrl;
@@ -177,4 +184,66 @@ public class Story {
     public void setUserId(String userId) {
         this.userId = userId;
     }
+
+    public static Story fromCursor(Cursor cursor){
+
+
+        String storyId = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_ID));
+        String title = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_TITLE));
+        String imageUrl = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_IMG_URL));
+        String storyUrl = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_URL));
+        int likeCount = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_STORY_LIKE_COUNT));
+        int commentCount = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_STORY_COMMENT_COUNT));
+        String createdOn = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_ON));
+        boolean isLiked = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_STORY_IS_LIKED))==1?true:false;
+        String description = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_DESC));
+        String userId = cursor.getString(cursor.getColumnIndex(DataProvider.COL_STORY_USER_ID));
+
+        Story story = new Story.Builder(storyId,title,imageUrl)
+                .storyUrl(storyUrl)
+                .description(description)
+                .userId(userId)
+                .commentCount(commentCount)
+                .likeCount(likeCount)
+                .isLiked(isLiked)
+                .createdOn(createdOn)
+                .build();
+
+        return story;
+
+    }
+
+    public static void insertStories(List<Story> list, Context ctx){
+        Cursor c = null;
+       // Database db = new Database(ctx);
+        //SQLiteDatabase ropoDB = db.getWritableDatabase();
+        int i =0;
+        for(Story story : list){
+            i++;
+            ContentValues values = new ContentValues();
+            values.put(DataProvider.COL_STORY_ID,story.getStoryId());
+            values.put(DataProvider.COL_STORY_TITLE,story.getTitle());
+            values.put(DataProvider.COL_STORY_IMG_URL,story.getImageUrl());
+            values.put(DataProvider.COL_STORY_URL,story.getStoryUrl());
+            values.put(DataProvider.COL_STORY_LIKE_COUNT,story.getLikeCount());
+            values.put(DataProvider.COL_STORY_COMMENT_COUNT,story.getCommentCount());
+            values.put(DataProvider.COL_STORY_ON,story.getCreatedOn());
+            values.put(DataProvider.COL_STORY_IS_LIKED,story.isLiked()?1:0);
+            values.put(DataProvider.COL_STORY_DESC,story.getDescription());
+            values.put(DataProvider.COL_STORY_USER_ID,story.getUserId());
+
+
+            c = ctx.getContentResolver().query(DataProvider.CONTENT_URI_STORY_ITEMS, null, DataProvider.COL_STORY_ID+"='"+story.getStoryId()+"'", null, null);
+           // c = ropoDB.rawQuery("select _id from story_table where "+ DataProvider.COL_STORY_ID+"='"+story.getStoryId()+"'",null);
+            if(c != null && c.getCount() > 0){
+                //ctx.getContentResolver().update(DataProvider.CONTENT_URI_STORY_ITEMS, values, DataProvider.COL_STORY_ID+"='"+story.getStoryId()+"'", null);
+            }else
+                ctx.getContentResolver().insert(DataProvider.CONTENT_URI_STORY_ITEMS, values);
+
+            c.close();
+
+        }
+    }
+
+
 }

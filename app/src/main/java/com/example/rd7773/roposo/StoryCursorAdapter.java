@@ -1,32 +1,39 @@
 package com.example.rd7773.roposo;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
-import android.support.v7.widget.RecyclerView;
+import android.database.Cursor;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.android.volley.toolbox.ImageLoader;
-import com.google.gson.Gson;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 import utils.AppController;
 import utils.CircleImageView;
 import utils.FeedImageView;
 
 /**
- * Created by rd7773 on 3/11/2016.
+ * Created by rd7773 on 3/16/2016.
  */
-public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
+public class StoryCursorAdapter extends CursorAdapter {
 
-    private class ViewHolderStory extends RecyclerView.ViewHolder{
+    private static final String TAG ="StoryCursorAdapter" ;
+    ImageLoader imageLoader = AppController.getInstance().getImageLoader();
+
+    public StoryCursorAdapter(Activity context, Cursor c, int flags) {
+        super(context, c, flags);
+        ctx = context;
+    }
+
+
+    private class ViewHolderStory {
 
         TextView tvTitle , tvDesc , tvLikeCount , tvCommentCount , tvLink ;
         TextView tvUserName , tvCreatedOn , tvFollow , tvLike ;
@@ -37,7 +44,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
 
 
         public ViewHolderStory(View itemView) {
-            super(itemView);
+
             profilePic = (CircleImageView) itemView.findViewById(R.id.profilePic);
             tvUserName = (TextView) itemView.findViewById(R.id.name);
             tvCreatedOn = (TextView) itemView.findViewById(R.id.timestamp);
@@ -56,72 +63,32 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
             ivFeed = (FeedImageView) itemView.findViewById(R.id.feedImage1);
 
 
-
-            rlContainer.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-
-                    String userId = storyList.get(getAdapterPosition()).getUserId();
-
-                    ArrayList<Story> stories = userStoryList.get(userId);
-                    if(stories==null)
-                    {
-                        stories = new ArrayList<Story>();
-                        for(Story story : storyList)
-                        {
-
-                            if(story.getUserId().equals(userId))
-                                stories.add(story);
-
-                        }
-
-                        userStoryList.put(userId,stories);
-                    }
-
-
-
-                    Intent i = new Intent(ctx,UserDetailActivity.class);
-                    i.putExtra("USER_ID",userId);
-                    i.putExtra("LIST", new Gson().toJson(stories));
-                    ctx.startActivityForResult(i,0);
-
-
-                }
-            });
-
-
         }
     }
 
-    ImageLoader imageLoader = AppController.getInstance().getImageLoader();
-    private HashMap<String , UserProfile> usersList;
-    private List<Story> storyList;
+
     Activity ctx;
-    private HashMap<String , ArrayList<Story>> userStoryList;
 
-    public StoryAdapter(HashMap<String, UserProfile> usersList, List<Story> storyList, Activity ctx) {
-        this.usersList = usersList;
-        this.storyList = storyList;
-        userStoryList = new HashMap<>();
-        this.ctx = ctx;
+    @Override
+    public boolean hasStableIds() {
+        return true;
     }
 
-    public Story getItem(int position) {
-        return storyList.get(position);
+
+    @Override
+    public View newView(Context context, Cursor cursor, ViewGroup parent) {
+        View view = LayoutInflater.from(ctx).inflate(R.layout.post_item, parent, false);
+        ViewHolderStory holder = new ViewHolderStory(view);
+        view.setTag(holder);
+        return view;
     }
 
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View v = LayoutInflater.from(ctx).inflate(R.layout.post_item, parent,false);
-        return new ViewHolderStory(v);
-    }
-
-    @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, final int position) {
-
-        final ViewHolderStory holder = (ViewHolderStory)viewHolder;
-        Story story = getItem(position);
-        final UserProfile userProfile = usersList.get(story.userId);
+    public void bindView(View view, Context context, Cursor cursor) {
+        final ViewHolderStory holder = (ViewHolderStory)view.getTag();
+        final int id = cursor.getInt(cursor.getColumnIndex(DataProvider.COL_ID));
+        final Story story = Story.fromCursor(cursor);
+        final UserProfile userProfile = UserProfile.fromCursor(cursor);
 
         if(story!=null){
 
@@ -139,6 +106,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
                 holder.ivLike.setImageResource(R.drawable.like);
                 holder.tvLike.setText("Like");
             }
+
             String imageurl = story.getImageUrl();
 
             if(imageurl!=null&&imageurl.trim().length()>0){
@@ -176,18 +144,11 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
             @Override
             public void onClick(View v) {
 
-                userProfile.setFollowing(userProfile.isFollowing?false:true);
-                /*if(userProfile.isFollowing){
+                ContentValues values = new ContentValues();
+                values.put(DataProvider.COL_USER_IS_FOLLOWING, userProfile.isFollowing?0:1);
+               int count =  ctx.getContentResolver().update(DataProvider.CONTENT_URI_USERS ,
+                        values, DataProvider.COL_USER_ID+"='"+userProfile.getUserId()+"'", null);
 
-                    holder.tvFollow.setText("Following");
-                    holder.rlFollow.setActivated(true);
-                }else{
-
-                    holder.tvFollow.setText("Follow");
-                    holder.rlFollow.setActivated(false);
-                }*/
-
-                notifyDataSetChanged();
             }
         });
 
@@ -195,8 +156,12 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
             @Override
             public void onClick(View v) {
 
-                Story story = storyList.get(position);
-                story.setLiked(story.isLiked()?false:true);
+
+                ContentValues values = new ContentValues();
+                values.put(DataProvider.COL_STORY_IS_LIKED, story.isLiked()?0:1);
+                int count = ctx.getContentResolver().update(DataProvider.CONTENT_URI_STORY_ITEMS,
+                        values, DataProvider.COL_STORY_ID+"='"+story.getStoryId()+"'", null);
+                /*story.setLiked(story.isLiked()?false:true);
 
                 if(story.isLiked()){
                     holder.ivLike.setImageResource(R.drawable.liked);
@@ -204,24 +169,24 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
                 }else{
                     holder.ivLike.setImageResource(R.drawable.like);
                     holder.tvLike.setText("Like");
-                }
+                }*/
+            }
+        });
+
+        holder.rlContainer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+
+
+                Intent i = new Intent(ctx,UserDetailActivity.class);
+                i.putExtra("USER_ID", userProfile.getUserId());
+               // i.putExtra("LIST", new Gson().toJson(stories));
+                ctx.startActivity(i);
+
+
             }
         });
 
     }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
-    }
-
-    @Override
-    public int getItemCount() {
-        return storyList.size();
-    }
-
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        notifyDataSetChanged();
-    }
-
 }

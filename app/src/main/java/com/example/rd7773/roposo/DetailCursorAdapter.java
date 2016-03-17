@@ -1,6 +1,8 @@
 package com.example.rd7773.roposo;
 
 import android.app.Activity;
+import android.content.ContentValues;
+import android.database.Cursor;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,17 +14,26 @@ import android.widget.TextView;
 
 import com.android.volley.toolbox.ImageLoader;
 
-import java.util.List;
-
 import utils.AppController;
 import utils.CircleImageView;
+import utils.CursorRecyclerViewAdapter;
 import utils.FeedImageView;
 import utils.Utils;
 
 /**
- * Created by rd7773 on 3/12/2016.
+ * Created by rd7773 on 3/17/2016.
  */
-public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>{
+
+public class DetailCursorAdapter extends CursorRecyclerViewAdapter<RecyclerView.ViewHolder> {
+
+    private static final String TAG ="DetailCursorAdapter" ;
+    ImageLoader imageLoader = AppController.getInstance().getImageLoader();
+
+    public DetailCursorAdapter(Activity context,Cursor cursor) {
+        super(context, cursor);
+        ctx = context;
+    }
+
 
     private final int HEADER =0 , STORY =1;
 
@@ -56,7 +67,7 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
             ivLike = (ImageView) itemView.findViewById(R.id.ivLike);
             ivFeed = (FeedImageView) itemView.findViewById(R.id.feedImage1);
             rlFollow.setVisibility(View.GONE);
-            llAction.setVisibility(View.GONE);
+            //llAction.setVisibility(View.GONE);
 
 
         }
@@ -90,36 +101,23 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
         }
     }
 
-    ImageLoader imageLoader = AppController.getInstance().getImageLoader();
-    private UserProfile userProfile;
-    private List<Story> storyList;
     Activity ctx;
 
-    public DetailAdapter(UserProfile userProfile, List<Story> storyList, Activity ctx) {
-        this.userProfile = userProfile;
-        this.storyList = storyList;
-        this.ctx = ctx;
-    }
-
-    public Story getItem(int position) {
-        return storyList.get(position-1);
-    }
 
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-
+    public RecyclerView.ViewHolder newViewHolder(ViewGroup parent, int viewType) {
         if(viewType==HEADER){
             View v = LayoutInflater.from(ctx).inflate(R.layout.user_header, parent,false);
             return new ViewHolderHeader(v);
         }
-            View v = LayoutInflater.from(ctx).inflate(R.layout.post_item, parent, false);
-            return new ViewHolderStory(v);
-
+        View v = LayoutInflater.from(ctx).inflate(R.layout.post_item, parent, false);
+        return new ViewHolderStory(v);
     }
 
     @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder viewHolder, final int position) {
-
+    public void bindViewHolder(RecyclerView.ViewHolder viewHolder, int position, Cursor cursor) {
+        final Story story = Story.fromCursor(cursor);
+        final UserProfile userProfile = UserProfile.fromCursor(cursor);
 
         if(getItemViewType(position)==HEADER){
 
@@ -172,9 +170,7 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
 
         }else
         {
-            final ViewHolderStory holder = (ViewHolderStory) viewHolder;
-            Story story = getItem(position);
-
+            ViewHolderStory holder = (ViewHolderStory) viewHolder;
 
             if (story != null) {
 
@@ -199,25 +195,6 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 } else {
                     holder.ivFeed.setVisibility(View.GONE);
                 }
-
-                holder.rlLike.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-
-                        Story story = storyList.get(position);
-                        story.setLiked(story.isLiked()?false:true);
-
-                        if(story.isLiked()){
-                            holder.ivLike.setImageResource(R.drawable.liked);
-                            holder.tvLike.setText("Liked");
-                        }else{
-                            holder.ivLike.setImageResource(R.drawable.like);
-                            holder.tvLike.setText("Like");
-                        }
-                    }
-                });
-
-
             }
 
 
@@ -233,23 +210,27 @@ public class DetailAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 }
 
             }
-        }
 
+            holder.rlLike.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    ContentValues values = new ContentValues();
+                    values.put(DataProvider.COL_STORY_IS_LIKED, story.isLiked()?0:1);
+                    int count = ctx.getContentResolver().update(DataProvider.CONTENT_URI_STORY_ITEMS,
+                            values, DataProvider.COL_STORY_ID+"='"+story.getStoryId()+"'", null);
+
+                }
+            });
+        }
     }
+
 
     @Override
     public int getItemViewType(int position) {
         return position==0?HEADER:STORY;
     }
 
-    @Override
-    public long getItemId(int position) {
-        return position;
-    }
 
-    @Override
-    public int getItemCount() {
-        return storyList.size()+1;
-    }
 
 }
